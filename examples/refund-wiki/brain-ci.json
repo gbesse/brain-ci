@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "wiki": "examples/refund-wiki/wiki",
+  "adapter": ["node", "examples/refund-wiki/ask.mjs"],
+  "cases": [
+    {
+      "id": "refund-window",
+      "question": "What is the refund window?",
+      "expectation": { "kind": "change", "to": "Refunds are available within 14 days of purchase." }
+    }
+  ]
+}
