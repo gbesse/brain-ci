@@ -1,3 +1,3 @@
 # Refund policy
 
-Answer: Refunds are available within 30 days of purchase.
+Answer: Refunds are available within 14 days of purchase.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -70,5 +70,16 @@ test("validates paths, IDs and cost guard before running", async () => {
   const f = await fixture();
   try {
     await assert.rejects(check({ repo: f.repo, config: f.config, base: "HEAD", judge: "typesafe", maxCalls: 0 }), /Cost guard/);
+  } finally { await f.cleanup(); }
+});
+
+test("rejects a symlink in the Git baseline", async () => {
+  const f = await fixture();
+  try {
+    await rm(join(f.repo, "wiki", "policy.md"));
+    await symlink("../ask.mjs", join(f.repo, "wiki", "policy.md"));
+    await run("git", ["add", "wiki/policy.md"], { cwd: f.repo });
+    await run("git", ["commit", "-qm", "Replace page with symlink"], { cwd: f.repo });
+    await assert.rejects(check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 }), /symlink/);
   } finally { await f.cleanup(); }
 });

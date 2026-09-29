@@ -1,19 +1,20 @@
 import type { CaseResult, Report, Verdict } from "./types.js";
 
-const inline = (value: string): string => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+const html = (value: string): string => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const inline = (value: string): string => html(value).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
 function quoted(value: string): string {
-  return value.trim().split(/\r?\n/).map((line) => `> ${line}`).join("\n");
+  return `<pre>${html(value.trim())}</pre>`;
 }
 
 function detail(result: CaseResult): string {
   const citations = (side: "before" | "after") => result[side].citations
-    .map((citation) => `- \`${citation.path}\`: ${inline(citation.quote)}`)
+    .map((citation) => `- <code>${html(citation.path)}</code>: ${inline(citation.quote)}`)
     .join("\n");
   return [
     `<details><summary>${result.id}: ${result.verdict}</summary>`,
     "",
-    `**Question:** ${result.question}`,
+    `**Question:** ${html(result.question)}`,
     "",
     "**Before**",
     "",

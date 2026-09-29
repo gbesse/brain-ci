@@ -19,10 +19,13 @@ export async function resolveBase(repo: string, ref: string): Promise<string> {
 }
 
 export async function copyBaseWiki(repo: string, sha: string, wiki: string, destination: string): Promise<void> {
-  const output = await git(repo, ["ls-tree", "-r", "-z", "--name-only", sha, "--", wiki]);
-  const names = output.toString("utf8").split("\0").filter(Boolean);
-  if (names.length === 0) throw new Error(`No files in ${wiki} at base ${sha.slice(0, 8)}`);
-  for (const name of names) {
+  const output = await git(repo, ["ls-tree", "-r", "-z", sha, "--", wiki]);
+  const entries = output.toString("utf8").split("\0").filter(Boolean);
+  if (entries.length === 0) throw new Error(`No files in ${wiki} at base ${sha.slice(0, 8)}`);
+  for (const entry of entries) {
+    const match = /^(100644|100755) blob [0-9a-f]+\t(.*)$/s.exec(entry);
+    if (!match) throw new Error("Git baseline contains a symlink, submodule, or unsupported entry");
+    const name = match[2]!;
     if (!name.startsWith(`${wiki}/`)) continue;
     const subpath = name.slice(wiki.length + 1);
     if (!safeRelativePath(subpath)) throw new Error(`Unsafe Git path: ${name}`);

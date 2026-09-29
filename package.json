@@ -12,9 +12,10 @@
   "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "check": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "node --import tsx --test tests/*.test.ts",
-    "release:check": "npm run check && npm test && npm run build && npm pack --dry-run"
+    "release:check": "npm run check && npm test && npm pack --dry-run",
+    "prepack": "npm run build"
   },
   "engines": { "node": ">=22" },
   "dependencies": { "@typesafe-ai/sdk": "^0.6.0" },
