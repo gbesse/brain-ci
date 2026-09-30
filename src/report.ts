@@ -9,12 +9,14 @@ function quoted(value: string): string {
 
 function detail(result: CaseResult): string {
   const citations = (side: "before" | "after") => result[side].citations
-    .map((citation) => `- <code>${html(citation.path)}</code>: ${inline(citation.quote)}`)
-    .join("\n");
+    .map((citation) => `Source: ${quoted(citation.path)}\n\nPassage: ${quoted(citation.quote)}`)
+    .join("\n\n");
   return [
     `<details><summary>${result.id}: ${result.verdict}</summary>`,
     "",
-    `**Question:** ${html(result.question)}`,
+    "**Question**",
+    "",
+    quoted(result.question),
     "",
     "**Before**",
     "",

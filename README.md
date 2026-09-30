@@ -13,13 +13,13 @@ Brain CI is a test runner, not a memory store or answer generator. It works with
 
 ## Try the example
 
-Requires Node.js 22+, Git, and a repository with a baseline commit. The example in this repository changes a refund window from 30 to 14 days.
+Requires Node.js 22+, Git, and a repository with a baseline commit. The example in this repository changes a refund window from 30 to 14 days; the `demo-baseline` tag pins the 30-day version.
 
 ```bash
 npm ci
 npm run build
 node dist/cli.js check \
-  --base HEAD~1 \
+  --base demo-baseline \
   --config examples/refund-wiki/brain-ci.json \
   --markdown reports/refund.md \
   --json reports/refund.json
@@ -29,14 +29,14 @@ The default `exact` judge makes no network calls. It accepts an exact normalized
 
 ```bash
 node --env-file=.env dist/cli.js check \
-  --base HEAD~1 \
+  --base demo-baseline \
   --config examples/refund-wiki/brain-ci.json \
   --judge typesafe \
   --max-calls 5 \
   --markdown reports/refund.md
 ```
 
-The `.env` file must be ignored by Git and contain `TYPESAFE_API_KEY`. One Jev request is made per case, up to `--max-calls`. The runner sends the old answer, new answer, and expected new answer to TypeSafe. It does not send complete wiki pages.
+The `.env` file must be ignored by Git and contain `TYPESAFE_API_KEY`. One Jev HTTP attempt is made per case, up to `--max-calls`; automatic retries are disabled for this cost guard. The runner sends the old answer, new answer, and expected new answer to TypeSafe. It does not send complete wiki pages.
 
 ## Configure a brain
 
@@ -90,7 +90,9 @@ Citation paths are relative to the wiki directory. Each quote must appear verbat
 
 Configuration errors, invalid citations and adapter failures also exit `2`. `--json` and `--markdown` write full answers and citations; those reports may contain private information. Paths under `reports/` are ignored by default in this repository. Set your own retention and access rules in other repositories.
 
-For a pull request, install the package from a pinned Git commit and run `brain-ci check --base origin/main --config brain-ci.json --judge exact`. Add `--judge typesafe` only after you approve sending the case answers to TypeSafe and configure the secret in CI. Brain CI never treats a Jev verdict as authorization to edit or publish memory.
+Adapter stderr and malformed stdout are suppressed in errors by default because they may contain private source text. Set `BRAIN_CI_DEBUG=1` only when inspecting a failure locally; it includes a short stderr excerpt in the error.
+
+For a pull request, fetch the base branch history (`actions/checkout` with `fetch-depth: 0`), install this package from a pinned Git commit, and run `brain-ci check --base origin/main --config brain-ci.json --judge exact`. Add `--judge typesafe` only after you approve sending the case answers to TypeSafe and configure the secret in CI. Brain CI never treats a Jev verdict as authorization to edit or publish memory.
 
 ## Design limits
 

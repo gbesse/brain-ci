@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { inside, safeRelativePath } from "./config.js";
 
@@ -39,6 +39,14 @@ export async function copyWorkingWiki(repo: string, wiki: string, destination: s
   const source = resolve(repo, wiki);
   const root = resolve(repo);
   if (!source.startsWith(`${root}/`)) throw new Error("Wiki path escapes repository");
+  const realRoot = await realpath(root);
+  let path = root;
+  for (const part of wiki.split("/")) {
+    path = join(path, part);
+    if ((await lstat(path)).isSymbolicLink()) throw new Error(`Symlinks are not allowed in wiki path: ${path}`);
+  }
+  const realSource = await realpath(source);
+  if (!realSource.startsWith(`${realRoot}/`)) throw new Error("Wiki path escapes repository through a symlink");
   if (!(await lstat(source)).isDirectory()) throw new Error("Wiki must be a directory");
   async function walk(directory: string): Promise<void> {
     for (const item of await readdir(directory, { withFileTypes: true })) {

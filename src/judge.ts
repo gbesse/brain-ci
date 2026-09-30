@@ -15,7 +15,12 @@ export async function judgeExact(before: Answer, after: Answer, expectation: Exp
     : { verdict: "review", reason: "New answer differs from the expected text; use the Jev judge or review manually" };
 }
 
-export async function judgeTypeSafe(before: Answer, after: Answer, expectation: Expectation, client = new TypeSafeClient()): Promise<Judgment> {
+export async function judgeTypeSafe(
+  before: Answer,
+  after: Answer,
+  expectation: Expectation,
+  client = new TypeSafeClient({ retry: { maxRetries: 0 }, logLevel: "off" }),
+): Promise<Judgment> {
   const criteria = expectation.kind === "preserve"
     ? {
         pass: "The answers assert the same substantive facts, even if wording changes.",

@@ -4,7 +4,12 @@ import { inside, safeRelativePath } from "./config.js";
 import type { Answer } from "./types.js";
 
 function parseAnswer(raw: string): Answer {
-  const value: unknown = JSON.parse(raw);
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new Error("Adapter output is not valid JSON (stdout is suppressed)");
+  }
   if (!value || typeof value !== "object") throw new Error("Adapter output must be an object");
   const row = value as Record<string, unknown>;
   if (typeof row.answer !== "string" || !row.answer.trim()) throw new Error("Adapter must return a nonempty answer");
@@ -37,7 +42,10 @@ export async function ask(adapter: string[], repo: string, wikiRoot: string, que
     child.on("error", reject);
     child.on("close", (code) => {
       clearTimeout(timeout);
-      if (code !== 0) reject(new Error(`Adapter exited ${code}: ${stderr.slice(0, 500)}`));
+      if (code !== 0) {
+        const detail = process.env.BRAIN_CI_DEBUG === "1" ? `: ${stderr.slice(0, 500)}` : " (stderr suppressed; set BRAIN_CI_DEBUG=1 to inspect locally)";
+        reject(new Error(`Adapter exited ${code}${detail}`));
+      }
       else resolve(stdout);
     });
     child.stdin.end(JSON.stringify({ question }) + "\n");

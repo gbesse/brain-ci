@@ -83,3 +83,54 @@ test("rejects a symlink in the Git baseline", async () => {
     await assert.rejects(check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 }), /symlink/);
   } finally { await f.cleanup(); }
 });
+
+test("rejects a symlink in a parent directory of the working wiki", async () => {
+  const f = await fixture();
+  try {
+    await mkdir(join(f.repo, "docs", "brain"), { recursive: true });
+    await writeFile(join(f.repo, "docs", "brain", "policy.md"), "Answer: 30 days\n");
+    await run("git", ["add", "docs/brain/policy.md"], { cwd: f.repo });
+    await run("git", ["commit", "-qm", "Add second wiki path"], { cwd: f.repo });
+    await rm(join(f.repo, "docs", "brain"), { recursive: true });
+    await symlink("../wiki", join(f.repo, "docs", "brain"));
+    const config = JSON.stringify({
+      version: 1, wiki: "docs/brain", adapter: ["node", "ask.mjs"],
+      cases: [{ id: "refund", question: "Refund window?", expectation: { kind: "preserve" } }],
+    });
+    await writeFile(f.config, config);
+    await assert.rejects(check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 }), /Symlinks are not allowed in wiki path/);
+  } finally { await f.cleanup(); }
+});
+
+test("escapes untrusted answer and question text in the Markdown report", async () => {
+  const f = await fixture();
+  try {
+    const report = await check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 });
+    report.results[0]!.question = "![remote](https://example.invalid/pixel)";
+    report.results[0]!.before.answer = "<script>alert(1)</script>";
+    report.results[0]!.after.citations[0]!.quote = "![remote](https://example.invalid/pixel)";
+    const rendered = toMarkdown(report);
+    assert.match(rendered, /<pre>!\[remote\]/);
+    assert.match(rendered, /&lt;script&gt;/);
+    assert.doesNotMatch(rendered, /<script>/);
+  } finally { await f.cleanup(); }
+});
+
+test("does not print adapter stderr or malformed stdout by default", async () => {
+  const f = await fixture();
+  try {
+    await writeFile(join(f.repo, "ask.mjs"), `
+      process.stderr.write('PRIVATE_ADAPTER_DATA');
+      process.exit(1);
+    `);
+    await assert.rejects(
+      check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 }),
+      (error: unknown) => error instanceof Error && !error.message.includes("PRIVATE_ADAPTER_DATA") && /stderr suppressed/.test(error.message),
+    );
+    await writeFile(join(f.repo, "ask.mjs"), `process.stdout.write('{PRIVATE_ADAPTER_DATA');`);
+    await assert.rejects(
+      check({ repo: f.repo, config: f.config, base: "HEAD", judge: "exact", maxCalls: 0 }),
+      (error: unknown) => error instanceof Error && !error.message.includes("PRIVATE_ADAPTER_DATA") && /not valid JSON/.test(error.message),
+    );
+  } finally { await f.cleanup(); }
+});
