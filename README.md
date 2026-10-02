@@ -38,6 +38,10 @@ node --env-file=.env dist/cli.js check \
 
 The `.env` file must be ignored by Git and contain `TYPESAFE_API_KEY`. One Jev HTTP attempt is made per case, up to `--max-calls`; automatic retries are disabled for this cost guard. The runner sends the old answer, new answer, and expected new answer to TypeSafe. It does not send complete wiki pages.
 
+## Compare expected and unexpected changes offline
+
+Run `npm run demo:verdicts` to create a temporary synthetic Git wiki, change its refund window, and see why the exact judge returns `pass` for a declared change but `review` for an undeclared one. The example removes its temporary files and uses no Jev key or network call.
+
 ## Configure a brain
 
 Create `brain-ci.json` in your brain's Git repository:

@@ -1,24 +1,42 @@
 {
   "name": "brain-ci",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Regression checks for versioned agent knowledge bases",
   "type": "module",
-  "bin": { "brain-ci": "dist/cli.js" },
+  "bin": {
+    "brain-ci": "dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "check": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "node --import tsx --test tests/*.test.ts",
     "release:check": "npm run check && npm test && npm pack --dry-run",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "demo:verdicts": "npm run build && node examples/verdict-comparison.mjs"
   },
-  "engines": { "node": ">=22" },
-  "dependencies": { "@typesafe-ai/sdk": "^0.6.0" },
-  "devDependencies": { "@types/node": "^24.5.2", "tsx": "^4.20.5", "typescript": "^5.9.2" },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
   "license": "MIT"
 }
