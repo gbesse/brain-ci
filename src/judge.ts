@@ -12,6 +12,8 @@ export async function judgeExact(before: Answer, after: Answer, expectation: Exp
       ? { verdict: "pass", reason: "Answer text is unchanged" }
       : { verdict: "review", reason: "Answer text changed; use the Jev judge or review manually" };
   }
+  const forbidden = expectation.forbid?.find((phrase) => norm(after.answer).includes(norm(phrase)));
+  if (forbidden) return { verdict: "regression", reason: "New answer contains a forbidden previous value" };
   return norm(after.answer) === norm(expectation.to)
     ? { verdict: "pass", reason: "New answer matches the expected text" }
     : { verdict: "review", reason: "New answer differs from the expected text; use the Jev judge or review manually" };
@@ -24,8 +26,11 @@ export async function judgeTypeSafe(
   question: string,
   client = new TypeSafeClient({ retry: { maxRetries: 0 }, logLevel: "off" }),
 ): Promise<Judgment> {
-  const totalChars = question.length + before.answer.length + after.answer.length + (expectation.kind === "change" ? expectation.to.length : 0);
+  const totalChars = question.length + before.answer.length + after.answer.length + (expectation.kind === "change" ? expectation.to.length + (expectation.forbid?.join("").length ?? 0) : 0);
   if (totalChars > MAX_JUDGE_INPUT_CHARS) throw new Error(`Jev input exceeds ${MAX_JUDGE_INPUT_CHARS} characters; shorten adapter answers`);
+  if (expectation.kind === "change" && expectation.forbid?.some((phrase) => after.answer.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()))) {
+    return { verdict: "regression", reason: "New answer contains a forbidden previous value" };
+  }
   const criteria = expectation.kind === "preserve"
     ? {
         pass: "The answers assert the same substantive facts, even if wording changes.",

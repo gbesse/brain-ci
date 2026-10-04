@@ -20,7 +20,7 @@ export function isInside(root: string, target: string): boolean {
   return child !== "" && child !== ".." && !child.startsWith(`..${sep}`) && !isAbsolute(child);
 }
 
-export function parseConfig(raw: unknown): Config {
+export function parseConfig(raw: unknown, allowEmptyCases = false): Config {
   if (!raw || typeof raw !== "object") throw new Error("Config must be an object");
   const value = raw as Record<string, unknown>;
   if (value.version !== 1) throw new Error("Config version must be 1");
@@ -28,7 +28,7 @@ export function parseConfig(raw: unknown): Config {
   if (!Array.isArray(value.adapter) || value.adapter.length === 0 || !value.adapter.every((x) => typeof x === "string" && x.length > 0)) {
     throw new Error("adapter must be a nonempty command array");
   }
-  if (!Array.isArray(value.cases) || value.cases.length === 0) throw new Error("cases must be a nonempty array");
+  if (!Array.isArray(value.cases) || (!allowEmptyCases && value.cases.length === 0)) throw new Error("cases must be a nonempty array");
   const ids = new Set<string>();
   for (const item of value.cases) {
     if (!item || typeof item !== "object") throw new Error("Each case must be an object");
@@ -39,10 +39,21 @@ export function parseConfig(raw: unknown): Config {
     const exp = row.expectation as Record<string, unknown> | undefined;
     if (!exp || (exp.kind !== "preserve" && exp.kind !== "change")) throw new Error(`Case ${row.id} needs an expectation`);
     if (exp.kind === "change" && (typeof exp.to !== "string" || !exp.to.trim())) throw new Error(`Case ${row.id} needs expectation.to`);
+    if (exp.kind === "change" && exp.forbid !== undefined && (!Array.isArray(exp.forbid) || !exp.forbid.every((x) => typeof x === "string" && x.trim()))) {
+      throw new Error(`Case ${row.id} expectation.forbid must be nonempty strings`);
+    }
+    if (row.source !== undefined) {
+      const source = row.source as Record<string, unknown>;
+      if (!source || typeof source !== "object" || typeof source.path !== "string" || !safeRelativePath(source.path)
+        || typeof source.before !== "string" || typeof source.after !== "string"
+        || (source.questionOrigin !== undefined && source.questionOrigin !== "explicit" && source.questionOrigin !== "heading")) {
+        throw new Error(`Case ${row.id} has invalid source provenance`);
+      }
+    }
   }
   return value as unknown as Config;
 }
 
-export async function loadConfig(path: string): Promise<Config> {
-  return parseConfig(JSON.parse(await readFile(path, "utf8")));
+export async function loadConfig(path: string, allowEmptyCases = false): Promise<Config> {
+  return parseConfig(JSON.parse(await readFile(path, "utf8")), allowEmptyCases);
 }

@@ -18,12 +18,42 @@ Requires Node.js 22+, Git, and a repository with a baseline commit. The example 
 ```bash
 npm ci
 npm run build
-node dist/cli.js check \
+node dist/cli.js propose \
   --base demo-baseline \
   --config examples/refund-wiki/brain-ci.json \
+  --out reports/proposed.json
+node dist/cli.js check \
+  --base demo-baseline \
+  --config reports/proposed.json \
   --markdown reports/refund.md \
   --json reports/refund.json
 ```
+
+`propose` reads the Git base and working wiki and adds candidate cases when an existing Markdown question/answer block changes. This example also derives a candidate question from the `# Refund policy` heading. Open `reports/proposed.json` to review its question, expected answer, forbidden old value, and source passages before using it as a CI config. No API key is needed to propose or run the exact judge.
+
+## Generate cases from a wiki diff
+
+Use `brain-ci propose --base origin/main --config brain-ci.json --out proposed.json` from your brain repository. A page can contain an explicit pair:
+
+```markdown
+Question: What is the refund window?
+Answer: Refunds are available within 14 days of purchase.
+```
+
+If a heading has an `Answer:` line without a `Question:` line, the generator drafts a question from the heading and marks `source.questionOrigin` as `heading`. It compares only a question already present at the same path in the Git base. New and deleted questions and freeform prose do not produce contracts; duplicate questions within one file cause an error. A config with `"cases": []` is accepted by `propose`; `check` requires at least one case.
+
+The output is a complete config. Review the added cases and commit the approved config, then run `brain-ci check --base origin/main --config brain-ci.json` in CI. Generated cases include `expectation.forbid` with the previous answer when that text is absent from the new answer. If an agent answers with the old value, the exact judge reports a regression. Remove or narrow `forbid` when historical context is allowed in a current answer; the check is a literal case-insensitive substring match. Existing cases with the same question are kept, and no duplicate is proposed.
+
+Add `--probe stale` to `check` to copy the working wiki into a disposable snapshot, reintroduce the superseded answer as a clearly labeled historical Markdown page, and ask the adapter again. Each generated case with source provenance gets a second report row. The source passages are checked against the selected snapshots before the probe runs. The example adapter deliberately picks the last Markdown page, so this command exits `1` with a detected regression:
+
+```bash
+node dist/cli.js check \
+  --base demo-baseline \
+  --config reports/proposed.json \
+  --probe stale
+```
+
+This probe tests one failure mode. Passing it means the adapter handled this injected historical page; it does not prove that all stale sources, user scopes, or deletions are safe. The injected page is removed with the temporary snapshot, and no source file in the repository is changed.
 
 The default `exact` judge makes no network calls. It accepts an exact normalized match and sends other changes to review. To compare meaning with Jev:
 
