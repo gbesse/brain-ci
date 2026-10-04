@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { isAbsolute, normalize, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Config } from "./types.js";
 
 export function safeRelativePath(value: string): boolean {
@@ -10,9 +10,14 @@ export function safeRelativePath(value: string): boolean {
 
 export function inside(root: string, relative: string): string {
   if (!safeRelativePath(relative)) throw new Error(`Unsafe relative path: ${relative}`);
-  const target = normalize(`${root}${sep}${relative}`);
-  if (!target.startsWith(`${root}${sep}`)) throw new Error(`Path escapes root: ${relative}`);
+  const target = resolve(root, relative);
+  if (!isInside(root, target)) throw new Error(`Path escapes root: ${relative}`);
   return target;
+}
+
+export function isInside(root: string, target: string): boolean {
+  const child = relative(root, target);
+  return child !== "" && child !== ".." && !child.startsWith(`..${sep}`) && !isAbsolute(child);
 }
 
 export function parseConfig(raw: unknown): Config {

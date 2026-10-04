@@ -9,7 +9,7 @@ Working wiki ──▶ your query adapter ──▶ answer + citations ─┘
                                       exact or Jev judge
 ```
 
-Brain CI is a test runner, not a memory store or answer generator. It works with any query command that implements the small JSON adapter contract below. The bundled adapter is deterministic and only demonstrates the protocol. Use your own agent, GBrain, or wiki query command for real questions.
+Brain CI is a test runner, not a memory store or answer generator. It works with a query command that implements the small JSON adapter contract below. The bundled adapter is deterministic and only demonstrates the protocol. For real questions, your adapter must query the wiki snapshot supplied by Brain CI. A GBrain adapter would need to load each snapshot into an isolated brain; querying the same live GBrain store twice would give an invalid comparison.
 
 ## Try the example
 
@@ -36,7 +36,7 @@ node --env-file=.env dist/cli.js check \
   --markdown reports/refund.md
 ```
 
-The `.env` file must be ignored by Git and contain `TYPESAFE_API_KEY`. One Jev HTTP attempt is made per case, up to `--max-calls`; automatic retries are disabled for this cost guard. The runner sends the old answer, new answer, and expected new answer to TypeSafe. It does not send complete wiki pages.
+The `.env` file must be ignored by Git and contain `TYPESAFE_API_KEY`. One Jev HTTP attempt is made per case, up to `--max-calls`; automatic retries are disabled for this cost guard. The runner sends the question, old answer, new answer, and expected new answer to TypeSafe. It does not send wiki snapshots directly, although an adapter answer may itself contain source text. Jev input is capped at 16,000 characters per case. The report records the model and input token count returned by TypeSafe.
 
 ## Compare expected and unexpected changes offline
 
@@ -103,7 +103,7 @@ For a pull request, fetch the base branch history (`actions/checkout` with `fetc
 - Jev compares meanings; it does not establish whether an answer is factually true. Human reviewed test cases and trustworthy source material remain necessary.
 - A `preserve` case assumes the baseline answer is acceptable. A `change` case supplies the intended new answer.
 - Jev's confidence is a routing signal. Brain CI sends results below `0.80` to `review`; this threshold is a starting default, not a calibrated guarantee for your corpus.
-- The adapter is your trusted process. It can perform its own network calls. Brain CI limits its runtime to 30 seconds per question, but does not sandbox it.
+- The adapter is your trusted process. It should return stable answers for the same snapshot and question; otherwise response variance can look like a memory regression. It can perform its own network calls. Brain CI limits its runtime to 30 seconds per question, but does not sandbox it.
 - Git snapshots cover regular files. Symlinks in the working wiki are rejected.
 
 ## Development

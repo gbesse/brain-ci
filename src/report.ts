@@ -31,6 +31,7 @@ function detail(result: CaseResult): string {
     citations("after"),
     "",
     `**Verdict:** ${result.reason}${result.confidence === undefined ? "" : ` (confidence ${result.confidence.toFixed(2)})`}`,
+    ...(result.model === undefined ? [] : ["", "**Model**", "", quoted(result.model), "", `**Input tokens:** ${result.inputTokens ?? "unknown"}`]),
     "",
     "</details>",
   ].join("\n");

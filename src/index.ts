@@ -36,7 +36,7 @@ export async function check(options: CheckOptions): Promise<Report> {
       const before = await ask(config.adapter, options.repo, beforeRoot, item.question);
       const after = await ask(config.adapter, options.repo, afterRoot, item.question);
       const judgment = options.judge === "typesafe"
-        ? await judgeTypeSafe(before, after, item.expectation)
+        ? await judgeTypeSafe(before, after, item.expectation, item.question)
         : await judgeExact(before, after, item.expectation);
       results.push({ ...item, before, after, ...judgment, judge: options.judge });
     }

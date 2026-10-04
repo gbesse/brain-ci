@@ -37,6 +37,8 @@ export interface CaseResult {
   reason: string;
   judge: "exact" | "typesafe";
   confidence?: number;
+  model?: string;
+  inputTokens?: number;
 }
 
 export interface Report {
