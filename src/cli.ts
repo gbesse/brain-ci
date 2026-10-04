@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { check, toMarkdown } from "./index.js";
+import { check, propose, toMarkdown } from "./index.js";
 
 function usage(): never {
-  throw new Error("Usage: brain-ci check --base <git-ref> --config <file> [--repo <dir>] [--judge exact|typesafe] [--max-calls N] [--json <file>] [--markdown <file>]");
+  throw new Error("Usage: brain-ci <check|propose> --base <git-ref> --config <file> [--repo <dir>] [--out <file> for propose] [--judge exact|typesafe] [--probe stale] [--max-calls N] [--json <file>] [--markdown <file>]");
 }
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  if (args.shift() !== "check") usage();
+  const command = args.shift();
+  if (command !== "check" && command !== "propose") usage();
   const flags = new Map<string, string>();
   while (args.length) {
     const key = args.shift();
@@ -17,17 +18,33 @@ async function main(): Promise<void> {
     if (!key?.startsWith("--") || !value || value.startsWith("--") || flags.has(key)) usage();
     flags.set(key, value);
   }
-  const allowed = new Set(["--base", "--config", "--repo", "--judge", "--max-calls", "--json", "--markdown"]);
+  const allowed = new Set(command === "check"
+    ? ["--base", "--config", "--repo", "--judge", "--probe", "--max-calls", "--json", "--markdown"]
+    : ["--base", "--config", "--repo", "--out"]);
   for (const key of flags.keys()) if (!allowed.has(key)) usage();
   const base = flags.get("--base");
   const config = flags.get("--config");
   if (!base || !config) usage();
+  const repo = resolve(flags.get("--repo") ?? process.cwd());
+  if (command === "propose") {
+    const result = await propose(repo, resolve(repo, config), base);
+    const output = JSON.stringify(result.config, null, 2) + "\n";
+    const target = flags.get("--out");
+    if (target) {
+      const path = resolve(repo, target);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, output);
+    } else process.stdout.write(output);
+    process.stderr.write(`brain-ci: ${result.added} proposed, ${result.skipped} already covered or skipped\n`);
+    return;
+  }
   const judge = flags.get("--judge") ?? "exact";
   if (judge !== "exact" && judge !== "typesafe") usage();
+  const probe = flags.get("--probe");
+  if (probe !== undefined && probe !== "stale") usage();
   const maxCalls = Number(flags.get("--max-calls") ?? "20");
   if (!Number.isSafeInteger(maxCalls) || maxCalls < 0) usage();
-  const repo = resolve(flags.get("--repo") ?? process.cwd());
-  const report = await check({ repo, config: resolve(repo, config), base, judge, maxCalls });
+  const report = await check({ repo, config: resolve(repo, config), base, judge, maxCalls, probe });
   const markdown = toMarkdown(report);
   for (const [flag, content] of [["--json", JSON.stringify(report, null, 2) + "\n"], ["--markdown", markdown + "\n"]] as const) {
     const target = flags.get(flag);

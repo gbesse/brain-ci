@@ -1,11 +1,12 @@
 export type Expectation =
   | { kind: "preserve" }
-  | { kind: "change"; to: string };
+  | { kind: "change"; to: string; forbid?: string[] };
 
 export interface Case {
   id: string;
   question: string;
   expectation: Expectation;
+  source?: { path: string; before: string; after: string; questionOrigin?: "explicit" | "heading" };
 }
 
 export interface Config {
@@ -31,6 +32,8 @@ export interface CaseResult {
   id: string;
   question: string;
   expectation: Expectation;
+  source?: Case["source"];
+  scenario?: "stale-probe";
   before: Answer;
   after: Answer;
   verdict: Verdict;
